@@ -1,0 +1,960 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>SRM Campus Shortest Path Finder</title>
+<style>
+  /* ── Reset & Base ── */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Segoe UI', Arial, sans-serif;
+    background: #f0f2f5;
+    color: #222;
+    min-height: 100vh;
+    padding: 20px;
+  }
+
+  /* ── Header ── */
+  .header {
+    text-align: center;
+    margin-bottom: 20px;
+  }
+  .header h1 {
+    font-size: 24px;
+    font-weight: 700;
+    color: #1a3a5c;
+    letter-spacing: -0.5px;
+  }
+  .header p {
+    font-size: 13px;
+    color: #666;
+    margin-top: 4px;
+  }
+
+  /* ── Layout ── */
+  .card {
+    background: #fff;
+    border-radius: 14px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+    padding: 20px;
+    margin-bottom: 16px;
+  }
+
+  /* ── Canvas ── */
+  #map {
+    display: block;
+    width: 100%;
+    border-radius: 10px;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    cursor: pointer;
+  }
+
+  /* ── Controls ── */
+  .controls {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    margin-top: 16px;
+  }
+  .control-group {
+    flex: 1;
+    min-width: 150px;
+  }
+  .control-group label {
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    color: #555;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 6px;
+  }
+  select {
+    width: 100%;
+    padding: 9px 12px;
+    border-radius: 8px;
+    border: 1.5px solid #d1d5db;
+    background: #fff;
+    color: #222;
+    font-size: 14px;
+    font-family: inherit;
+    cursor: pointer;
+    transition: border-color 0.2s;
+  }
+  select:focus { outline: none; border-color: #3b82f6; }
+
+  .btn-group { display: flex; gap: 8px; }
+
+  button {
+    padding: 9px 20px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-family: inherit;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+    transition: transform 0.1s, opacity 0.15s;
+  }
+  button:active { transform: scale(0.97); }
+
+  #find-btn {
+    background: #1d4ed8;
+    color: #fff;
+    box-shadow: 0 2px 6px rgba(29,78,216,0.3);
+  }
+  #find-btn:hover { opacity: 0.88; }
+
+  #reset-btn {
+    background: #f1f5f9;
+    color: #555;
+    border: 1.5px solid #d1d5db;
+  }
+  #reset-btn:hover { background: #e2e8f0; }
+
+  /* ── Result Box ── */
+  .result-box {
+    background: #f8fafc;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 14px 18px;
+    min-height: 56px;
+    margin-top: 16px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    flex-wrap: wrap;
+  }
+  .result-box.success {
+    background: #eff6ff;
+    border-color: #bfdbfe;
+  }
+  .result-path {
+    font-size: 15px;
+    font-weight: 600;
+    color: #1e3a5f;
+    flex: 1;
+  }
+  .result-dist {
+    font-size: 13px;
+    font-weight: 600;
+    color: #1d4ed8;
+    background: #dbeafe;
+    padding: 4px 12px;
+    border-radius: 20px;
+    white-space: nowrap;
+  }
+  .placeholder-text { color: #9ca3af; font-weight: 400; font-size: 14px; }
+
+  /* ── Algorithm Steps Box ── */
+  .algo-box {
+    background: #fff;
+    border-radius: 14px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+    padding: 20px;
+    margin-bottom: 16px;
+    display: none;
+  }
+  .algo-box h3 {
+    font-size: 15px;
+    font-weight: 700;
+    color: #1a3a5c;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .algo-box h3::before {
+    content: '⚙';
+    font-size: 16px;
+  }
+
+  .step-list {
+    list-style: none;
+    counter-reset: step;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 12px;
+    font-size: 13px;
+    color: #444;
+  }
+  .step-list li {
+    counter-increment: step;
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    line-height: 1.5;
+  }
+  .step-list li::before {
+    content: counter(step);
+    background: #1d4ed8;
+    color: #fff;
+    font-size: 11px;
+    font-weight: 700;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+
+  .visited-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: #555;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    margin-bottom: 6px;
+  }
+  .visited-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .chip {
+    font-size: 12px;
+    padding: 3px 10px;
+    border-radius: 12px;
+    font-weight: 500;
+    transition: background 0.3s;
+  }
+  .chip-visited { background: #fef3c7; color: #92400e; }
+  .chip-current { background: #fde68a; color: #78350f; border: 1.5px solid #f59e0b; }
+  .chip-path    { background: #fee2e2; color: #991b1b; }
+
+  /* ── Legend ── */
+  .legend {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+    font-size: 12px;
+    color: #666;
+    margin-top: 10px;
+  }
+  .legend-item { display: flex; align-items: center; gap: 5px; }
+  .legend-line {
+    width: 28px; height: 3px;
+    border-radius: 2px;
+  }
+
+  /* ── Hint ── */
+  .hint {
+    text-align: center;
+    font-size: 12px;
+    color: #9ca3af;
+    margin-top: 6px;
+  }
+
+  /* ── Distance Table ── */
+  .dist-table-wrap { margin-top: 12px; overflow-x: auto; }
+  .dist-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+  }
+  .dist-table th {
+    background: #f1f5f9;
+    color: #444;
+    padding: 5px 10px;
+    text-align: left;
+    border-bottom: 1px solid #e2e8f0;
+    font-weight: 600;
+  }
+  .dist-table td {
+    padding: 5px 10px;
+    border-bottom: 1px solid #f1f5f9;
+    color: #333;
+  }
+  .dist-table tr.path-row td { background: #eff6ff; font-weight: 600; color: #1d4ed8; }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════
+     PAGE STRUCTURE
+     ═══════════════════════════════════════════ -->
+
+<div class="header">
+  <h1>🏫 Campus Shortest Path Finder</h1>
+  <p>Visualise Dijkstra's Algorithm on Campus — DAA Project</p>
+</div>
+
+<!-- Map Card -->
+<div class="card">
+  <canvas id="map" height="360"></canvas>
+
+  <div class="controls">
+    <div class="control-group">
+      <label>Starting Location</label>
+      <select id="start-sel"></select>
+    </div>
+    <div class="control-group">
+      <label>Destination</label>
+      <select id="end-sel"></select>
+    </div>
+    <div class="btn-group">
+      <button id="find-btn">🔍 Find Shortest Path</button>
+      <button id="reset-btn">↺ Reset</button>
+    </div>
+  </div>
+
+  <!-- Result -->
+  <div class="result-box" id="result-box">
+    <span class="result-path placeholder-text" id="result-path">
+      Select a start and destination, then press "Find Shortest Path".
+    </span>
+  </div>
+
+  <!-- Legend -->
+  <div class="legend">
+    <div class="legend-item">
+      <div class="legend-line" style="background:#94a3b8;border-top:2px dashed #94a3b8;height:0;margin-top:1px"></div>
+      Normal path
+    </div>
+    <div class="legend-item">
+      <div class="legend-line" style="background:#f59e0b"></div>
+      Explored (visited)
+    </div>
+    <div class="legend-item">
+      <div class="legend-line" style="background:#dc2626"></div>
+      Shortest path
+    </div>
+  </div>
+
+  <p class="hint">💡 You can also click directly on campus nodes to select start / end.</p>
+</div>
+
+<!-- Algorithm Steps Card -->
+<div class="algo-box" id="algo-box">
+  <h3>Dijkstra's Algorithm — Execution Details</h3>
+
+  <!-- VIVA-READY: Step-by-step explanation -->
+  <ul class="step-list">
+    <li><strong>Initialise:</strong> Set distance to all nodes = ∞, except source = 0. Add source to priority queue.</li>
+    <li><strong>Pick minimum:</strong> Dequeue the node with the smallest tentative distance (greedy choice).</li>
+    <li><strong>Relax neighbours:</strong> For each unvisited neighbour, if current distance + edge weight &lt; recorded distance, update it.</li>
+    <li><strong>Repeat</strong> steps 2–3 until destination is dequeued or queue is empty.</li>
+    <li><strong>Backtrack:</strong> Follow the "previous node" pointers from destination → source to get the path.</li>
+  </ul>
+
+  <div class="visited-label">Nodes explored (in order):</div>
+  <div class="visited-row" id="visited-row"></div>
+
+  <div class="dist-table-wrap" id="dist-table-wrap" style="display:none">
+    <div class="visited-label" style="margin-top:12px">Final distance table:</div>
+    <table class="dist-table" id="dist-table">
+      <thead>
+        <tr>
+          <th>Node</th>
+          <th>Shortest Distance from Source</th>
+          <th>Via</th>
+        </tr>
+      </thead>
+      <tbody id="dist-table-body"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     JAVASCRIPT
+     ═══════════════════════════════════════════ -->
+<script>
+// ╔══════════════════════════════════════════════════╗
+// ║  SECTION 1 — GRAPH DATA                         ║
+// ║  Nodes: campus locations with (x,y) positions   ║
+// ║  Edges: roads between locations with distances  ║
+// ╚══════════════════════════════════════════════════╝
+
+/*
+  Node positions are expressed as fractions (0–1) of canvas width/height.
+  This makes them scale automatically on any screen size.
+*/
+const NODES = {
+  "Main Gate":   { rx: 0.10, ry: 0.80, color: "#2563eb", icon: "🚪" },
+  "Hostel":      { rx: 0.22, ry: 0.22, color: "#7c3aed", icon: "🏠" },
+  "Tech Park":   { rx: 0.60, ry: 0.15, color: "#0891b2", icon: "💻" },
+  "Library":     { rx: 0.82, ry: 0.55, color: "#d97706", icon: "📚" },
+  "Admin Block": { rx: 0.50, ry: 0.72, color: "#dc2626", icon: "🏢" },
+  "Canteen":     { rx: 0.38, ry: 0.48, color: "#16a34a", icon: "🍽" },
+};
+
+/*
+  Edges: [nodeA, nodeB, distance_in_metres]
+  The graph is UNDIRECTED — you can travel both ways on each road.
+*/
+const EDGES = [
+  ["Main Gate",   "Admin Block",  150],
+  ["Main Gate",   "Hostel",       320],
+  ["Hostel",      "Tech Park",    280],
+  ["Hostel",      "Canteen",      200],
+  ["Tech Park",   "Library",      230],
+  ["Tech Park",   "Canteen",      180],
+  ["Canteen",     "Admin Block",  160],
+  ["Canteen",     "Library",      210],
+  ["Admin Block", "Library",      300],
+  ["Admin Block", "Tech Park",    350],
+];
+
+// Build adjacency list: { "Main Gate": [{to:"Admin Block", dist:150}, ...], ... }
+const graph = {};
+const nodeNames = Object.keys(NODES);
+nodeNames.forEach(n => { graph[n] = []; });
+EDGES.forEach(([a, b, w]) => {
+  graph[a].push({ to: b, dist: w });
+  graph[b].push({ to: a, dist: w });
+});
+
+
+// ╔══════════════════════════════════════════════════╗
+// ║  SECTION 2 — DIJKSTRA'S ALGORITHM               ║
+// ║  Classic single-source shortest path            ║
+// ╚══════════════════════════════════════════════════╝
+
+/**
+ * dijkstra(start, end)
+ *
+ * @param {string} start - Source node name
+ * @param {string} end   - Destination node name
+ * @returns {{ dist: number, path: string[], visitOrder: string[], prevMap: Object, distMap: Object }}
+ *
+ * HOW IT WORKS (for viva):
+ * --------------------------------------------------
+ * 1. Initialise: dist[start] = 0, dist[all others] = Infinity.
+ *    Keep a priority queue (min-heap by cost).
+ *
+ * 2. At each iteration, pop the node u with the minimum dist.
+ *    Mark u as visited (processed).
+ *
+ * 3. For each neighbour v of u:
+ *    relaxedDist = dist[u] + edge_weight(u,v)
+ *    If relaxedDist < dist[v]:
+ *       dist[v] = relaxedDist    ← RELAXATION STEP
+ *       prev[v] = u              ← Remember how we got here
+ *       Push v into the queue with new cost.
+ *
+ * 4. Stop when we dequeue the destination node.
+ *
+ * 5. Reconstruct path: follow prev[] from end → start, then reverse.
+ *
+ * TIME COMPLEXITY:  O((V + E) log V)  with a binary heap
+ * SPACE COMPLEXITY: O(V)
+ */
+function dijkstra(start, end) {
+
+  // ── Step 1: Initialise data structures ──────────────────
+  const dist = {};    // Shortest known distance from start to each node
+  const prev = {};    // Previous node on the shortest path to each node
+  const visited = new Set();
+  const visitOrder = [];
+
+  nodeNames.forEach(n => {
+    dist[n] = Infinity;   // All distances unknown — set to ∞
+    prev[n] = null;       // No predecessor known yet
+  });
+  dist[start] = 0;        // Distance from start to itself is 0
+
+  /*
+    Priority Queue (min-heap simulation using a sorted array).
+    Each entry: { node, cost }
+    In a production implementation you'd use a proper binary heap.
+    For a small graph (6 nodes), array sort is perfectly fine.
+  */
+  let pq = [{ node: start, cost: 0 }];
+
+  // ── Step 2–4: Main loop ─────────────────────────────────
+  while (pq.length > 0) {
+
+    // Sort so the node with the SMALLEST cost is first (greedy choice)
+    pq.sort((a, b) => a.cost - b.cost);
+    const { node: u } = pq.shift();   // Dequeue the minimum-cost node
+
+    if (visited.has(u)) continue;    // Skip if already processed
+    visited.add(u);
+    visitOrder.push(u);              // Record the exploration order
+
+    // Early exit — we've found the shortest path to the destination
+    if (u === end) break;
+
+    // ── Step 3: Relax all outgoing edges from u ──────────
+    for (const { to: v, dist: w } of graph[u]) {
+      if (visited.has(v)) continue;       // Skip already-processed neighbours
+
+      const relaxedDist = dist[u] + w;   // Tentative new distance
+
+      if (relaxedDist < dist[v]) {
+        // Found a shorter route to v!
+        dist[v] = relaxedDist;
+        prev[v] = u;
+        pq.push({ node: v, cost: relaxedDist });  // Enqueue with updated cost
+      }
+    }
+  }
+
+  // ── Step 5: Reconstruct shortest path ───────────────────
+  const path = [];
+  let cur = end;
+
+  while (cur !== null) {        // Walk backwards from end → start
+    path.unshift(cur);          // Prepend to get correct order
+    cur = prev[cur];
+  }
+
+  // If path doesn't start from our source, no path exists
+  if (path[0] !== start) {
+    return { dist: Infinity, path: [], visitOrder, prevMap: prev, distMap: dist };
+  }
+
+  return {
+    dist: dist[end],
+    path,
+    visitOrder,
+    prevMap: prev,
+    distMap: dist,
+  };
+}
+
+
+// ╔══════════════════════════════════════════════════╗
+// ║  SECTION 3 — CANVAS DRAWING HELPERS             ║
+// ╚══════════════════════════════════════════════════╝
+
+const canvas = document.getElementById("map");
+const ctx    = canvas.getContext("2d");
+
+let W = 640, H = 360;
+let highlightPath  = [];   // Nodes on the shortest path
+let visitedNodes   = [];   // Exploration order from Dijkstra
+let selStart       = null;
+let selEnd         = null;
+let animTimer      = null;
+
+/** Resize canvas to fill its parent */
+function resizeCanvas() {
+  const parentW = canvas.parentElement.clientWidth - 40;  // 20px padding each side
+  W = Math.max(300, parentW);
+  H = Math.round(W * 0.5625);   // 16:9 aspect ratio
+  canvas.width  = W;
+  canvas.height = H;
+}
+
+/** Convert relative {rx,ry} to canvas {x,y} */
+function toCanvas(name) {
+  const nd = NODES[name];
+  return { x: nd.rx * W, y: nd.ry * H };
+}
+
+/** Check if canvas click is near a node (returns node name or null) */
+function nodeAtPoint(mx, my) {
+  const HIT_RADIUS = Math.max(22, W * 0.04);
+  for (const name of nodeNames) {
+    const { x, y } = toCanvas(name);
+    if (Math.hypot(mx - x, my - y) < HIT_RADIUS) return name;
+  }
+  return null;
+}
+
+/**
+ * drawMap(visitedCount, pathEdgeCount)
+ * @param {number} visitedCount   - How many visited nodes to highlight (for animation)
+ * @param {number} pathEdgeCount  - How many path edges to draw red (for animation)
+ */
+function drawMap(visitedCount = 0, pathEdgeCount = 0) {
+  ctx.clearRect(0, 0, W, H);
+
+  // ── Draw grid lines (light) ──────────────────────────
+  ctx.strokeStyle = "#e2e8f0";
+  ctx.lineWidth   = 1;
+  for (let x = 0; x < W; x += 60) {
+    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke();
+  }
+  for (let y = 0; y < H; y += 60) {
+    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
+  }
+
+  const visitedSet = new Set(visitedNodes.slice(0, visitedCount));
+
+  // ── Draw all edges (grey dashes) ─────────────────────
+  EDGES.forEach(([a, b, w]) => {
+    const pa = toCanvas(a), pb = toCanvas(b);
+
+    ctx.save();
+    ctx.beginPath();
+    ctx.moveTo(pa.x, pa.y);
+    ctx.lineTo(pb.x, pb.y);
+    ctx.strokeStyle = "#cbd5e1";
+    ctx.lineWidth   = 2;
+    ctx.setLineDash([6, 5]);
+    ctx.stroke();
+    ctx.restore();
+
+    // Edge weight label
+    const mx = (pa.x + pb.x) / 2;
+    const my = (pa.y + pb.y) / 2;
+    ctx.fillStyle = "#94a3b8";
+    ctx.font = `bold ${Math.max(10, W * 0.016)}px 'Segoe UI', Arial, sans-serif`;
+    ctx.textAlign = "center";
+    ctx.fillText(w + "m", mx, my - 5);
+  });
+
+  // ── Draw explored edges (amber) ───────────────────────
+  if (visitedCount > 1) {
+    for (let i = 1; i < visitedCount && i < visitedNodes.length; i++) {
+      const a = visitedNodes[i - 1], b = visitedNodes[i];
+      // Only draw if there's actually an edge between consecutive visited nodes
+      const hasEdge = EDGES.some(([ea, eb]) =>
+        (ea === a && eb === b) || (ea === b && eb === a)
+      );
+      if (!hasEdge) continue;
+      const pa = toCanvas(a), pb = toCanvas(b);
+      ctx.save();
+      ctx.beginPath();
+      ctx.moveTo(pa.x, pa.y);
+      ctx.lineTo(pb.x, pb.y);
+      ctx.strokeStyle = "#f59e0b";
+      ctx.lineWidth   = 4;
+      ctx.globalAlpha = 0.7;
+      ctx.stroke();
+      ctx.restore();
+    }
+  }
+
+  // ── Draw shortest path edges (red, thick) ─────────────
+  if (highlightPath.length > 1 && pathEdgeCount > 0) {
+    for (let i = 0; i < Math.min(pathEdgeCount, highlightPath.length - 1); i++) {
+      const pa = toCanvas(highlightPath[i]);
+      const pb = toCanvas(highlightPath[i + 1]);
+      ctx.save();
+      ctx.beginPath();
+      ctx.moveTo(pa.x, pa.y);
+      ctx.lineTo(pb.x, pb.y);
+      ctx.strokeStyle = "#dc2626";
+      ctx.lineWidth   = 6;
+      ctx.lineCap     = "round";
+      ctx.shadowColor = "rgba(220,38,38,0.3)";
+      ctx.shadowBlur  = 8;
+      ctx.stroke();
+      ctx.restore();
+    }
+  }
+
+  // ── Draw nodes ────────────────────────────────────────
+  const R = Math.max(18, W * 0.033);   // Node radius scales with canvas
+
+  nodeNames.forEach(name => {
+    const { x, y, color } = { ...NODES[name], ...toCanvas(name) };
+    const isStart   = name === selStart;
+    const isEnd     = name === selEnd;
+    const onPath    = highlightPath.includes(name);
+    const wasVisited = visitedSet.has(name);
+
+    // Outer glow ring
+    if (isStart || isEnd) {
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(x, y, R + 7, 0, Math.PI * 2);
+      ctx.fillStyle = isStart
+        ? "rgba(37,99,235,0.18)"
+        : "rgba(220,38,38,0.18)";
+      ctx.fill();
+      ctx.restore();
+    }
+
+    // Node shadow
+    ctx.save();
+    ctx.shadowColor = "rgba(0,0,0,0.18)";
+    ctx.shadowBlur  = 8;
+    ctx.beginPath();
+    ctx.arc(x, y, R, 0, Math.PI * 2);
+    ctx.fillStyle = onPath
+      ? "#dc2626"
+      : wasVisited
+        ? "#f59e0b"
+        : color;
+    ctx.fill();
+    ctx.strokeStyle = "#fff";
+    ctx.lineWidth   = 2.5;
+    ctx.stroke();
+    ctx.restore();
+
+    // Node label (below)
+    const fontSize = Math.max(10, W * 0.018);
+    ctx.font      = `bold ${fontSize}px 'Segoe UI', Arial, sans-serif`;
+    const tw       = ctx.measureText(name).width;
+    const lx       = x - tw / 2 - 6;
+    const ly       = y + R + 4;
+
+    // Label pill background
+    ctx.save();
+    ctx.fillStyle = "rgba(255,255,255,0.92)";
+    const pillW = tw + 12, pillH = fontSize + 7;
+    ctx.beginPath();
+    if (ctx.roundRect) {
+      ctx.roundRect(lx, ly, pillW, pillH, 5);
+    } else {
+      ctx.rect(lx, ly, pillW, pillH);
+    }
+    ctx.fill();
+    ctx.restore();
+
+    ctx.fillStyle = onPath ? "#991b1b" : "#1e293b";
+    ctx.textAlign = "center";
+    ctx.fillText(name, x, ly + fontSize + 1);
+
+    // S / E badge on the node
+    if (isStart || isEnd) {
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(x + R - 4, y - R + 4, 9, 0, Math.PI * 2);
+      ctx.fillStyle = isStart ? "#2563eb" : "#dc2626";
+      ctx.fill();
+      ctx.fillStyle = "#fff";
+      ctx.font      = `bold ${Math.max(9, W * 0.014)}px 'Segoe UI', Arial, sans-serif`;
+      ctx.textAlign = "center";
+      ctx.fillText(isStart ? "S" : "E", x + R - 4, y - R + 8);
+      ctx.restore();
+    }
+  });
+}
+
+
+// ╔══════════════════════════════════════════════════╗
+// ║  SECTION 4 — ANIMATION                          ║
+// ║  Shows Dijkstra exploration then highlights path║
+// ╚══════════════════════════════════════════════════╝
+
+/**
+ * Animates two phases:
+ *  Phase 1 — reveal explored nodes one by one (amber)
+ *  Phase 2 — reveal shortest path edges one by one (red)
+ */
+function runAnimation(result) {
+  clearInterval(animTimer);
+
+  let frame     = 0;
+  const vLen    = visitedNodes.length;
+  const pLen    = Math.max(0, highlightPath.length - 1);
+  const total   = vLen + pLen + 4;
+
+  animTimer = setInterval(() => {
+    frame++;
+
+    const visitStep = Math.min(frame, vLen);
+    const pathStep  = Math.max(0, Math.min(frame - vLen - 1, pLen));
+
+    drawMap(visitStep, pathStep);
+
+    // Update visited chips
+    let html = "";
+    for (let i = 0; i < visitStep; i++) {
+      const isCurrent = i === visitStep - 1 && frame <= vLen;
+      const isOnPath  = highlightPath.includes(visitedNodes[i]);
+      const cls       = isCurrent
+        ? "chip chip-current"
+        : isOnPath
+          ? "chip chip-path"
+          : "chip chip-visited";
+      html += `<span class="${cls}">${visitedNodes[i]}</span>`;
+    }
+    document.getElementById("visited-row").innerHTML = html;
+
+    if (frame >= total) {
+      clearInterval(animTimer);
+      drawMap(vLen, pLen);
+
+      // Show distance table
+      if (result.distMap) showDistTable(result);
+    }
+  }, 130);
+}
+
+/** Renders the final distance table */
+function showDistTable(result) {
+  const tbody = document.getElementById("dist-table-body");
+  tbody.innerHTML = "";
+
+  nodeNames.forEach(name => {
+    const d  = result.distMap[name];
+    const via = result.prevMap[name] || "—";
+    const onPath = result.path.includes(name);
+    const tr = document.createElement("tr");
+    if (onPath) tr.className = "path-row";
+    tr.innerHTML = `
+      <td>${name}</td>
+      <td>${d === Infinity ? "∞ (unreachable)" : d + " m"}</td>
+      <td>${via}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+
+  document.getElementById("dist-table-wrap").style.display = "block";
+}
+
+
+// ╔══════════════════════════════════════════════════╗
+// ║  SECTION 5 — UI LOGIC                           ║
+// ║  Dropdowns, buttons, canvas click events        ║
+// ╚══════════════════════════════════════════════════╝
+
+/** Populate dropdowns with node names */
+function populateSelects() {
+  const startSel = document.getElementById("start-sel");
+  const endSel   = document.getElementById("end-sel");
+
+  nodeNames.forEach(n => {
+    startSel.add(new Option(n, n));
+    endSel.add(new Option(n, n));
+  });
+
+  // Sensible defaults
+  startSel.value = "Main Gate";
+  endSel.value   = "Library";
+  selStart = "Main Gate";
+  selEnd   = "Library";
+}
+
+document.getElementById("start-sel").addEventListener("change", e => {
+  selStart = e.target.value;
+  clearResults();
+  drawMap(0, 0);
+});
+
+document.getElementById("end-sel").addEventListener("change", e => {
+  selEnd = e.target.value;
+  clearResults();
+  drawMap(0, 0);
+});
+
+/** Run Dijkstra and animate */
+document.getElementById("find-btn").addEventListener("click", () => {
+  const s = document.getElementById("start-sel").value;
+  const e = document.getElementById("end-sel").value;
+  selStart = s; selEnd = e;
+
+  if (s === e) {
+    showResult("⚠️ Please select two different locations.", null);
+    return;
+  }
+
+  const result = dijkstra(s, e);
+  highlightPath = result.path;
+  visitedNodes  = result.visitOrder;
+
+  if (result.path.length === 0) {
+    showResult("❌ No path exists between these locations.", null);
+    return;
+  }
+
+  showResult(result.path.join(" → "), result.dist);
+
+  // Show algorithm box and animate
+  document.getElementById("algo-box").style.display = "block";
+  document.getElementById("dist-table-wrap").style.display = "none";
+  document.getElementById("visited-row").innerHTML = "";
+  runAnimation(result);
+});
+
+/** Reset everything */
+document.getElementById("reset-btn").addEventListener("click", () => {
+  clearInterval(animTimer);
+  highlightPath = []; visitedNodes = [];
+  selStart = null; selEnd = null;
+  document.getElementById("start-sel").value = "Main Gate";
+  document.getElementById("end-sel").value   = "Library";
+  selStart = "Main Gate"; selEnd = "Library";
+  clearResults();
+  document.getElementById("algo-box").style.display = "none";
+  drawMap(0, 0);
+});
+
+/** Display result in the result box */
+function showResult(pathStr, distVal) {
+  const rp = document.getElementById("result-path");
+  const rb = document.getElementById("result-box");
+
+  // Remove any existing badge
+  const old = rb.querySelector(".result-dist");
+  if (old) old.remove();
+
+  rp.textContent = pathStr;
+  rp.className   = "result-path";
+
+  if (distVal !== null) {
+    rb.classList.add("success");
+    const badge = document.createElement("span");
+    badge.className   = "result-dist";
+    badge.textContent = distVal + " m total";
+    rb.appendChild(badge);
+  } else {
+    rb.classList.remove("success");
+  }
+}
+
+/** Clear result and reset state */
+function clearResults() {
+  clearInterval(animTimer);
+  highlightPath = []; visitedNodes = [];
+  const rb = document.getElementById("result-box");
+  rb.classList.remove("success");
+  const old = rb.querySelector(".result-dist");
+  if (old) old.remove();
+  document.getElementById("result-path").textContent =
+    "Select a start and destination, then press \"Find Shortest Path\".";
+  document.getElementById("result-path").className = "result-path placeholder-text";
+}
+
+/** Click on canvas to select nodes */
+canvas.addEventListener("click", e => {
+  const rect = canvas.getBoundingClientRect();
+  const scaleX = W / rect.width;
+  const scaleY = H / rect.height;
+  const mx = (e.clientX - rect.left) * scaleX;
+  const my = (e.clientY - rect.top)  * scaleY;
+
+  const clicked = nodeAtPoint(mx, my);
+  if (!clicked) return;
+
+  /*
+    Node click logic:
+    - If nothing selected → set as start
+    - If start selected but no end → set as end
+    - If both selected → restart selection
+  */
+  if (!selStart || (selStart && selEnd)) {
+    selStart = clicked;
+    selEnd   = null;
+    document.getElementById("start-sel").value = clicked;
+    clearResults();
+  } else if (clicked !== selStart) {
+    selEnd = clicked;
+    document.getElementById("end-sel").value = clicked;
+    clearResults();
+  }
+
+  drawMap(0, 0);
+});
+
+/** Initial render */
+function init() {
+  resizeCanvas();
+  populateSelects();
+  drawMap(0, 0);
+}
+
+window.addEventListener("resize", () => {
+  resizeCanvas();
+  drawMap(
+    visitedNodes.length,
+    highlightPath.length > 0 ? highlightPath.length - 1 : 0
+  );
+});
+
+init();
+</script>
+</body>
+</html>
