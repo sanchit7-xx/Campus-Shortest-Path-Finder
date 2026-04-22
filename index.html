@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Smart Bus Route (TSP Cycle)</title>
+<title>Bus Route (TSP Cycle)</title>
 
 <style>
 body {
@@ -141,7 +141,7 @@ function tsp(start){
 
         if(totalCost < minCost){
           minCost = totalCost;
-          bestRoute = [...route, start];
+          bestRoute = [...route, start]; // return to start
         }
       }
       return;
@@ -193,7 +193,7 @@ function draw(path=[]){
       (nodes[a].y+nodes[b].y)/2);
   });
 
-  // highlight path
+  // path
   for(let i=0;i<path.length-1;i++){
     ctx.beginPath();
     ctx.moveTo(nodes[path[i]].x,nodes[path[i]].y);
@@ -240,7 +240,7 @@ function runTSP(){
     res.route.join(" → ");
 
   document.getElementById("cost").innerText =
-    "Total Cost (Cycle): "+res.cost;
+    "Total Cost (Cycle): " + res.cost;
 
   draw(res.route);
 }
