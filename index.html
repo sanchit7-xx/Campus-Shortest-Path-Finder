@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Smart Bus Route (TSP)</title>
+<title>Smart Bus Route (TSP Cycle)</title>
 
 <style>
 body {
@@ -29,8 +29,7 @@ body {
 /* Controls */
 .controls {
   display:flex;
-  justify-content:space-between;
-  flex-wrap:wrap;
+  justify-content:center;
   gap:10px;
 }
 
@@ -68,13 +67,12 @@ canvas {
 
 <body>
 
-<h1>🚌 Bus Route (TSP with Destination)</h1>
+<h1>🚌 Bus Route (TSP Cycle)</h1>
 
 <div class="card">
 
 <div class="controls">
   <select id="start"></select>
-  <select id="end"></select>
   <button onclick="runTSP()">Find Route</button>
 </div>
 
@@ -118,16 +116,33 @@ edges.forEach(([a,b,w])=>{
   graph[b].push({to:a,dist:w});
 });
 
-// ===== TSP WITH END =====
-function tsp(start, end){
+// ===== GET COST =====
+function getCost(a,b){
+  for(const [x,y,w] of edges){
+    if((x===a && y===b)||(x===b && y===a)){
+      return w;
+    }
+  }
+  return 0;
+}
+
+// ===== TSP CYCLE =====
+function tsp(start){
   let minCost = Infinity;
   let bestRoute = [];
 
   function backtrack(curr, visited, route, cost){
     if(visited.size === Object.keys(nodes).length){
-      if(curr === end && cost < minCost){
-        minCost = cost;
-        bestRoute = [...route];
+
+      const returnCost = getCost(curr, start);
+
+      if(returnCost > 0){
+        const totalCost = cost + returnCost;
+
+        if(totalCost < minCost){
+          minCost = totalCost;
+          bestRoute = [...route, start];
+        }
       }
       return;
     }
@@ -137,7 +152,7 @@ function tsp(start, end){
         visited.add(to);
         route.push(to);
 
-        backtrack(to, visited, route, cost+dist);
+        backtrack(to, visited, route, cost + dist);
 
         visited.delete(to);
         route.pop();
@@ -153,11 +168,8 @@ function tsp(start, end){
 
 // ===== UI =====
 const startSel = document.getElementById("start");
-const endSel = document.getElementById("end");
-
 Object.keys(nodes).forEach(n=>{
   startSel.add(new Option(n,n));
-  endSel.add(new Option(n,n));
 });
 
 // ===== DRAW =====
@@ -190,7 +202,6 @@ function draw(path=[]){
     ctx.lineWidth=4;
     ctx.stroke();
 
-    // cost on path (highlighted)
     const x = (nodes[path[i]].x+nodes[path[i+1]].x)/2;
     const y = (nodes[path[i]].y+nodes[path[i+1]].y)/2;
 
@@ -213,27 +224,11 @@ function draw(path=[]){
   });
 }
 
-// get edge cost
-function getCost(a,b){
-  for(const [x,y,w] of edges){
-    if((x===a && y===b)||(x===b && y===a)){
-      return w;
-    }
-  }
-  return 0;
-}
-
 // ===== RUN =====
 function runTSP(){
   const start = startSel.value;
-  const end = endSel.value;
 
-  if(start===end){
-    alert("Start and End cannot be same");
-    return;
-  }
-
-  const res = tsp(start,end);
+  const res = tsp(start);
 
   if(res.route.length===0){
     document.getElementById("route").innerText="No route found";
@@ -245,7 +240,7 @@ function runTSP(){
     res.route.join(" → ");
 
   document.getElementById("cost").innerText =
-    "Total Cost: "+res.cost;
+    "Total Cost (Cycle): "+res.cost;
 
   draw(res.route);
 }
